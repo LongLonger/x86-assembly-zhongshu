@@ -1,0 +1,92 @@
+
+
+mov ax,0xb800
+mov es,ax
+
+mov byte [es:0x0000],'L'
+mov byte [es:0x0001],0x07
+mov byte [es:0x0002],'a'
+mov byte [es:0x0003],0x07
+mov byte [es:0x0004],'b'
+mov byte [es:0x0005],0x07
+mov byte [es:0x0006],'e'
+mov byte [es:0x0007],0x07
+mov byte [es:0x0008],'l'
+mov byte [es:0x0009],0x07
+mov byte [es:0x000a],' '
+mov byte [es:0x000b],0x07
+mov byte [es:0x000c],'o'
+mov byte [es:0x000d],0x07
+mov byte [es:0x000e],'f'
+mov byte [es:0x000f],0x07
+mov byte [es:0x0010],'f'
+mov byte [es:0x0011],0x07
+mov byte [es:0x0012],'s'
+mov byte [es:0x0013],0x07
+mov byte [es:0x0014],'e'
+mov byte [es:0x0015],0x07
+mov byte [es:0x0016],'t'
+mov byte [es:0x0017],0x07
+mov byte [es:0x0018],':'
+mov byte [es:0x0019],0x07
+
+mov cx, cs
+mov ds, cx
+
+mov dx,0
+mov ax,number
+mov bx,10
+div bx
+mov [ds:0x7c00+number+0x0000], dl
+
+xor dx, dx
+div bx
+mov [ds:0x7c00+number+0x0001],dl
+
+xor dx, dx
+div bx
+mov [ds:0x7c00+number+0x0002],dl
+
+xor dx, dx
+div bx
+mov [ds:0x7c00+number+0x0003],dl
+
+xor dx, dx
+div bx
+mov [ds:0x7c00+number+0x0004],dl
+
+;将数据复制到显存
+mov cl, [ds:0x7c00+number+0x0004]
+add cl, 0x30
+mov [es:0x001a], cl
+mov byte [es:0x001b], 0x07
+
+mov cl, [ds:0x7c00+number+0x0003]
+add cl, 0x30
+mov [es:0x001c], cl
+mov byte [es:0x001d], 0x07
+
+mov cl, [ds:0x7c00+number+0x0002]
+add cl, 0x30
+mov [es:0x001e], cl
+mov byte [es:0x001f], 0x07
+
+mov cl, [ds:0x7c00+number+0x0001]
+add cl, 0x30
+mov [es:0x0020], cl
+mov byte [es:0x0021], 0x07
+
+mov cl, [ds: 0x7c00+number+0x0000]
+add cl, 0x30
+mov [es:0x0022], cl
+mov byte [es:0x0023], 0x07
+
+mov byte [es:0x0024], 'D'
+mov byte [es:0x0025], 0x07
+
+infi jmp near infi
+
+number db 0,0,0,0,0
+
+times 178 db 0
+db 0x55, 0xaa
