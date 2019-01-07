@@ -145,21 +145,21 @@ start: ;zhongshu-comment 119~124行 参考 [P157 倒数第二段] [8.4.1 初始�
       pop es
     ;zhongshu-comment 接下来，设置RTC（实时时钟）的参数和工作状态，使它能够产生中断信号给8259中断控制器
       mov al,0x0b                        ;RTC寄存器B
-      or al,0x80                         ;阻断NMI zhongshu-comment 0x80即1000 0000，or运算后，al的最高位一定是1。CMOS RAM的0x70端口的最高位为1，则阻断所有的NMI中断信号到达处理器
+      or al,0x80                         ;阻断NMI zhongshu-comment 参考P155 中上。 0x80即1000 0000，or运算后，al的最高位一定是1。CMOS RAM的0x70端口的最高位为1，则阻断所有的NMI中断信号到达处理器
       out 0x70,al   ;zhongshu-comment 要操作0x0b这个存储单元，因为CMOS RAM只有128字节，所以只需要0x70端口的0~6bit位就能访问整个CMOS RAM了，所以即使执行了148行的代码，当前行的语义依然是：访问0x0b这个存储单元
       mov al,0x12                        ;设置寄存器B，禁止周期性中断，开放更新结束中断，BCD码，24小时制
       out 0x71,al                        ;zhongshu-comment 通过0x71数据端口往0x0b存储单元(又称寄存器B)写数据，写的内功是0x12，即0001 0010，参照表9-3可知：
-
+    ;zhongshu-comment 153~155行，参考 P159 第2、3段
       mov al,0x0c
-      out 0x70,al
-      in al,0x71                         ;读RTC寄存器C，复位未决的中断状态
-
+      out 0x70,al   ;zhongshu-comment 在向0x70端口写入0x0c的同时，也打开了NMI，因为0x0c的最高位是0，配合148行的代码和注释来理解。参考P155 中上
+      in al,0x71                         ;读RTC寄存器C，复位未决的中断状态 ;zhongshu-comment 复位应该就是置零吧？
+    ;zhongshu-comment 157~159行，参考 P159 倒数第七段
       in al,0xa1                         ;读8259从片的IMR寄存器
-      and al,0xfe                        ;清除bit 0(此位连接RTC)
+      and al,0xfe                        ;清除bit 0(此位连接RTC) zhongshu-comment 0xfe的二进制是：1111 1110，做了and运算之后，al中的内容的第0位为0。RTC的中断会传到IMR的第0位，0表示可以通过、1表示不能通过
       out 0xa1,al                        ;写回此寄存器
 
-      sti                                ;重新开放中断
-
+      sti                                ;重新开放中断 zhongshu-comment 开放设备中断。对应137行代码
+    ;zhongshu-comment 162~176行，参考 P159 9.1.7
       mov bx,done_msg                    ;显示安装完成信息
       call put_string
 
@@ -172,7 +172,7 @@ start: ;zhongshu-comment 119~124行 参考 [P157 倒数第二段] [8.4.1 初始�
 
  .idle:
       hlt                                ;使CPU进入低功耗状态，直到用中断唤醒
-      not byte [12*160 + 33*2+1]         ;反转显示属性
+      not byte [12*160 + 33*2+1]         ;反转显示属性 zhongshu-comment 该显示属性是171行代码的@字符的，形成的效果就是@字符不断闪烁
       jmp .idle
 
 ;-------------------------------------------------------------------------------
