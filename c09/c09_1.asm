@@ -8,7 +8,7 @@ SECTION header vstart=0                     ;定义用户程序头部段
     program_length  dd program_end          ;程序总长度[0x00]
 
     ;用户程序入口点
-    code_entry      dw start                ;偏移地址[0x04]
+    code_entry      dw start                ;偏移地址[0x04] ;zhongshu-comment 在119行
                     dd section.code.start   ;段地址[0x06]
 
     realloc_tbl_len dw (header_end-realloc_begin)/4
@@ -116,39 +116,39 @@ bcd_to_ascii:                            ;BCD码转ASCII
       ret
 
 ;-------------------------------------------------------------------------------
-start:
-      mov ax,[stack_segment]
+start: ;zhongshu-comment 119~124行 参考 [P157 倒数第二段] [8.4.1 初始化段寄存器和栈切换] 用户程序的入口。因为加载器程序c08_mbr.asm已经完成了重定位工作，所以用户程序的头等大事是初始化处理器的各个段寄存器DS、ES、SS，以便访问专属于自己的数据。段寄存器CS就不用初始化了，那是加载器负责做的事，要不然用户程序怎么可能执行呢？
+      mov ax,[stack_segment] ;zhongshu-comment 初始执行时，DS和ES指向用户程序头部段，头部段名字叫header。栈段寄存器SS依然指向加载器的栈空间，所以SS要重新改一下，使其指向本程序的栈段
       mov ss,ax
       mov sp,ss_pointer
       mov ax,[data_segment]
       mov ds,ax
-
+    ;zhongshu-comment 126~130 将数据段里的字符串显示出来
       mov bx,init_msg                    ;显示初始信息
       call put_string
 
       mov bx,inst_msg                    ;显示安装信息
       call put_string
-
+    ;zhongshu-comment 131~135行 参考P158 中段。为了修改0x70号中断对应的中断处理程序在中断向量表(IVT)中的入口点(即段地址:偏移地址)，需要先找到0x70中断处理程序入口点在IVT内的偏移量
       mov al,0x70
       mov bl,4
-      mul bl                             ;计算0x70号中断在IVT中的偏移
+      mul bl                             ;计算0x70号中断在IVT中的偏移 zhongshu-comment 8位的通用寄存器或者内存单元中的数和寄存器AL中的内容相乘，结果是16位，保存在AX寄存器中
       mov bx,ax
 
-      cli                                ;防止改动期间发生新的0x70号中断
-
+      cli                                ;防止改动期间发生新的0x70号中断 zhongshu-comment 防止发生这样的情况：当0x70中断处理程序的入口点信息只修改了一部分时，如果这时候发生了0x70号中断，就会执行一个非预期的中断处理程序，因为入口点信息只修改了一部分。
+    ;zhongshu-comment 139~145行 参考P158 中下
       push es
       mov ax,0x0000
-      mov es,ax
-      mov word [es:bx],new_int_0x70      ;偏移地址。
+      mov es,ax     ;zhongshu-comment 使es段寄存器指向中断向量表所在的段
+      mov word [es:bx],new_int_0x70      ;偏移地址。 ;zhongshu-comment 0x70中断处理程序入口点在IVT内的偏移量在131~135行时已经计算出来了，计算的结果保存在bx中
 
       mov word [es:bx+2],cs              ;段地址
       pop es
-
+    ;zhongshu-comment 接下来，设置RTC（实时时钟）的参数和工作状态，使它能够产生中断信号给8259中断控制器
       mov al,0x0b                        ;RTC寄存器B
-      or al,0x80                         ;阻断NMI
-      out 0x70,al
-      mov al,0x12                        ;设置寄存器B，禁止周期性中断，开放更
-      out 0x71,al                        ;新结束后中断，BCD码，24小时制
+      or al,0x80                         ;阻断NMI zhongshu-comment 0x80即1000 0000，or运算后，al的最高位一定是1。CMOS RAM的0x70端口的最高位为1，则阻断所有的NMI中断信号到达处理器
+      out 0x70,al   ;zhongshu-comment 要操作0x0b这个存储单元，因为CMOS RAM只有128字节，所以只需要0x70端口的0~6bit位就能访问整个CMOS RAM了，所以即使执行了148行的代码，当前行的语义依然是：访问0x0b这个存储单元
+      mov al,0x12                        ;设置寄存器B，禁止周期性中断，开放更新结束中断，BCD码，24小时制
+      out 0x71,al                        ;zhongshu-comment 通过0x71数据端口往0x0b存储单元(又称寄存器B)写数据，写的内功是0x12，即0001 0010，参照表9-3可知：
 
       mov al,0x0c
       out 0x70,al
