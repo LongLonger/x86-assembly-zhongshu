@@ -24,7 +24,7 @@ header_end:
 
 ;===============================================================================
 SECTION code align=16 vstart=0           ;定义代码段（16字节对齐）
-new_int_0x70:
+new_int_0x70:   ;zhongshu-comment 27~116行 参考 P160 9.1.8 实时时钟中断的处理过程
       push ax
       push bx
       push cx
@@ -37,33 +37,33 @@ new_int_0x70:
       out 0x70,al
       in al,0x71                         ;读寄存器A
       test al,0x80                       ;测试第7位UIP
-      jnz .w0                            ;以上代码对于更新周期结束中断来说
-                                         ;是不必要的
+      jnz .w0                            ;以上代码对于更新周期结束中断来说是不必要的 zhongshu-comment P161的第2、3段
+    ;zhongshu-comment 42~58行 参考P161 第4段
       xor al,al
-      or al,0x80
+      or al,0x80    ;zhongshu-comment 参考148行代码
       out 0x70,al
       in al,0x71                         ;读RTC当前时间(秒)
       push ax
 
       mov al,2
-      or al,0x80
+      or al,0x80    ;zhongshu-comment 参考148行代码
       out 0x70,al
       in al,0x71                         ;读RTC当前时间(分)
       push ax
 
       mov al,4
-      or al,0x80
+      or al,0x80    ;zhongshu-comment 参考148行代码
       out 0x70,al
       in al,0x71                         ;读RTC当前时间(时)
       push ax
 
-      mov al,0x0c                        ;寄存器C的索引。且开放NMI
+      mov al,0x0c                        ;寄存器C的索引。且开放NMI ;zhongshu-comment 参考148行代码和154行代码
       out 0x70,al
       in al,0x71                         ;读一下RTC的寄存器C，否则只发生一次中断
                                          ;此处不考虑闹钟和周期性中断的情况
       mov ax,0xb800
-      mov es,ax
-
+      mov es,ax     ;zhongshu-comment es段寄存器指向显示缓冲区
+    ;zhongshu-comment 67~90行 参考 P161 第五段开始往下，到P162第一段
       pop ax
       call bcd_to_ascii
       mov bx,12*160 + 36*2               ;从屏幕上的12行36列开始显示
@@ -88,7 +88,7 @@ new_int_0x70:
       call bcd_to_ascii
       mov [es:bx+12],ah
       mov [es:bx+14],al                  ;显示两位小时数字
-
+    ;zhongshu-comment 92~94行，P162 2~4段
       mov al,0x20                        ;中断结束命令EOI
       out 0xa0,al                        ;向从片发送
       out 0x20,al                        ;向主片发送
@@ -172,7 +172,7 @@ start: ;zhongshu-comment 119~124行 参考 [P157 倒数第二段] [8.4.1 初始�
 
  .idle:
       hlt                                ;使CPU进入低功耗状态，直到用中断唤醒
-      not byte [12*160 + 33*2+1]         ;反转显示属性 zhongshu-comment 该显示属性是171行代码的@字符的，形成的效果就是@字符不断闪烁
+      not byte [12*160 + 33*2+1]         ;反转显示属性 zhongshu-comment 参考 P159 9.1.7 该显示属性是171行代码的@字符的，形成的效果就是@字符不断闪烁
       jmp .idle
 
 ;-------------------------------------------------------------------------------
