@@ -99,11 +99,11 @@
                           db 0x55,0xaa
 
 ;zhongshu-comment
-;step①实模式下，初始化栈段寄存器，
-;step②实模式下，安装GDT，
-;step③实模式下，初始化描述符表寄存器GDTR，
-;step④实模式下，打开A20地址线，
-;step⑤实模式下，执行cli，进制所有中断，
-;step⑥实模式下，将cr0寄存器的PE位设置为1，
-;step⑦实模式下，jmp到GDT中设定的cs段，32位保护模式
-;step⑧执行32位模式下的指令
+;step①实模式下，初始化栈段寄存器
+;step②实模式下，安装GDT
+;step③实模式下，初始化描述符表寄存器GDTR
+;step④实模式下，打开A20地址线
+;step⑤实模式下，执行cli，进制所有中断
+;step⑥实模式下，将cr0寄存器的PE位设置为1
+;step⑦实模式下，jmp到GDT中设定的cs段，
+;step⑧32位保护模式，执行32位模式下的指令
