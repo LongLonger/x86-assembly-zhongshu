@@ -4,7 +4,7 @@
          ;创建日期：2011-5-16 19:54
 
          ;设置堆栈段和栈指针 
-         mov ax,cs      
+         mov ax,cs    ;zhongshu-comment 刚执行主引导扇区程序时cs代码段为0
          mov ss,ax
          mov sp,0x7c00
       
@@ -33,7 +33,7 @@
          mov dword [bx+0x1c],0x00409600
 
          ;初始化描述符表寄存器GDTR
-         mov word [cs: gdt_size+0x7c00],31  ;描述符表的界限（总字节数减一）   
+         mov word [cs: gdt_size+0x7c00],31  ;描述符表的界限（总字节数减一）zhongshu-comment word用来限制31的数据长度为两字节
                                              
          lgdt [cs: gdt_size+0x7c00]
       
@@ -97,3 +97,13 @@
                              
          times 510-($-$$) db 0
                           db 0x55,0xaa
+
+;zhongshu-comment
+;step①实模式下，初始化栈段寄存器，
+;step②实模式下，安装GDT，
+;step③实模式下，初始化描述符表寄存器GDTR，
+;step④实模式下，打开A20地址线，
+;step⑤实模式下，执行cli，进制所有中断，
+;step⑥实模式下，将cr0寄存器的PE位设置为1，
+;step⑦实模式下，jmp到GDT中设定的cs段，32位保护模式
+;step⑧执行32位模式下的指令
