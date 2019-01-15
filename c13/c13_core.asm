@@ -2,7 +2,7 @@
          ;文件名：c13_core.asm
          ;文件说明：保护模式微型核心程序 
          ;创建日期：2011-10-26 12:11
-
+    ;zhongshu-comment 7~30行，参考P222~223 13.2.1
          ;以下常量定义部分。内核的大部分内容都应当固定 
          core_code_seg_sel     equ  0x38    ;内核代码段选择子
          core_data_seg_sel     equ  0x30    ;内核数据段选择子 
