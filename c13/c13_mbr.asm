@@ -4,7 +4,7 @@
          ;创建日期：2011-10-28 22:35        ;设置堆栈段和栈指针 
          
          core_base_address equ 0x00040000   ;常数，内核加载的起始内存地址 zhongshu-comment 内核会加载到该物理内存地址处
-         core_start_sector equ 0x00000001   ;常数，内核的起始逻辑扇区号 
+         core_start_sector equ 0x00000001   ;常数，内核在磁盘的起始逻辑扇区号
     ;zhongshu-comment 9~55行，参考P13.2.2。 这些行的代码是为进入保护模式做准备
          mov ax,cs      
          mov ss,ax
@@ -63,10 +63,10 @@
          mov ss,eax
          xor esp,esp                        ;堆栈指针 <- 0 
          
-         ;以下加载系统核心程序 
-         mov edi,core_base_address 
+         ;以下加载系统核心程序 zhongshu-comment 67~93行，参考P224的最后两段~P225 13.2.3以上。作用是：从硬盘把内核程序c13_core.asm读入内存，和第八章的代码有点类似，但是因为是32位寄存器，用了很多32位的寄存器，所以稍有不同，P225的第1~3段说了不同之处
+         mov edi,core_base_address      ;zhongshu-comment 内核加载的起始内存地址
       
-         mov eax,core_start_sector
+         mov eax,core_start_sector      ;zhongshu-comment 内核在磁盘的起始逻辑扇区号
          mov ebx,edi                        ;起始地址 
          call read_hard_disk_0              ;以下读取程序的起始部分（一个扇区） 
       
@@ -91,7 +91,7 @@
          call read_hard_disk_0
          inc eax
          loop @2                            ;循环读，直到读完整个内核 
-
+    ;zhongshu-comment 95~135行代码，参考P225~228 13.2.3 安装内核的段描述符
  setup:
          mov esi,[0x7c00+pgdt+0x02]         ;不可以在代码段内寻址pgdt，但可以
                                             ;通过4GB的段来访问
