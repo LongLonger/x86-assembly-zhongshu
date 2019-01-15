@@ -73,23 +73,23 @@
          mov dword [es:0x0b8008],0x07200720 ;两个空白字符及其显示属性
          mov dword [es:0x0b800c],0x076b076f ;字符'o'、'k'及其显示属性
 
-         ;开始冒泡排序
-         mov ecx,pgdt-string-1              ;遍历次数=串长度-1
+         ;开始冒泡排序 zhongshu-comment 77~91行代码就是冒泡算法的全部代码了。只做了一些零碎的注释，还没敲一遍。参考 P217~218 12.5 使用别名访问代码段对字符排序
+         mov ecx,pgdt-string-1              ;遍历次数=串长度-1 zhongshu-comment 穿长度 = pgdt - string
   @@1:
          push ecx                           ;32位模式下的loop使用ecx
          xor bx,bx                          ;32位模式下，偏移量可以是16位，也可以
   @@2:                                      ;是后面的32位
-         mov ax,[string+bx]
+         mov ax,[string+bx]     ;zhongshu-comment 将字符串的第1个和第2个字符传送到ax中，al中是第1个字符，ah中是第2个字符
          cmp ah,al                          ;ah中存放的是源字的高字节
-         jge @@3
+         jge @@3    ;zhongshu-comment 如果第2个字符大于等于第1个字符，就跳到@@3处，反之如果第1个字符大于第2个字符，就执行85行代码：交换ah和al的内容
          xchg al,ah
-         mov [string+bx],ax
+         mov [string+bx],ax     ;zhongshu-comment 交换位置后，将数据写回原来的字单元。接着执行88行的代码
   @@3:
-         inc bx
-         loop @@2
+         inc bx     ;zhongshu-comment 将bx加1，以指向下一个字符，这样在下一次内循环时就比较第2个字符和第3个字符
+         loop @@2   ;zhongshu-comment 进入下一次内循环，比较第2个字符和第3个字符
          pop ecx
          loop @@1
-
+    ;zhongshu-comment 93~100行 参考 P219 用于显示最终的排序结果，已经不属于冒泡算法部分的代码了
          mov ecx,pgdt-string
          xor ebx,ebx                        ;偏移地址是32位的情况
   @@4:                                      ;32位的偏移具有更大的灵活性
