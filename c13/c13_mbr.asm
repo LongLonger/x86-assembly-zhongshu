@@ -64,7 +64,7 @@
          xor esp,esp                        ;堆栈指针 <- 0 
          
          ;以下加载系统核心程序 zhongshu-comment 67~93行，参考P224的最后两段~P225 13.2.3以上。作用是：从硬盘把内核程序c13_core.asm读入内存，和第八章的代码有点类似，但是因为是32位寄存器，用了很多32位的寄存器，所以稍有不同，P225的第1~3段说了不同之处
-         mov edi,core_base_address      ;zhongshu-comment 内核加载的起始内存地址
+         mov edi,core_base_address      ;zhongshu-comment 内核加载的起始物理内存地址
       
          mov eax,core_start_sector      ;zhongshu-comment 内核在磁盘的起始逻辑扇区号
          mov ebx,edi                        ;起始地址 
@@ -103,10 +103,10 @@
          add eax,edi                        ;公用例程段基地址 zhongshu-comment 内核被加载的起始物理地址是由EDI寄存器指向的，而eax是公共例程代码段的汇编地址(汇编地址即：相对于程序开头的偏移量)，所以eax + edi就得到了内核程序公共例程代码段的起始物理地址
          mov ecx,0x00409800                 ;字节粒度的代码段描述符 zhongshu-comment ---- ---- 0100 ---- 1001 1000 ---- ----  位24~31、位0~7都是段起始地址的一部分，位16~19是段界限的一部分，这些位都不需要理会，因为段起始地址由EAX负责，段界限由EBX负责。ECX负责段的各种属性，这里只需要关注非“-”部分即可，不需要关注的那些位我用“-”表示了
          call make_gdt_descriptor       ;zhongshu-comment 这是104行的注释，解释那3段数字都是什么位：①G、D/B、L、AVL。 ②P、DPL(占2位)、S。 ③TYPE(占4位)
-         mov [esi+0x28],eax
+         mov [esi+0x28],eax     ;zhongshu-comment 执行了第96行代码后，ESI寄存器的内容是GDT的基地址。106~107行 参考 P228 第5段。将make_gdt_descriptor过程的返回结果edx:eax共8个字节的描述符追加到GDT中，106行先写入低32位，107行写入高32位
          mov [esi+0x2c],edx
        
-         ;建立核心数据段描述符
+         ;建立核心数据段描述符 zhongshu-comment 同98~107行
          mov eax,[edi+0x08]                 ;核心数据段起始汇编地址
          mov ebx,[edi+0x0c]                 ;核心代码段汇编地址 
          sub ebx,eax
@@ -117,7 +117,7 @@
          mov [esi+0x30],eax
          mov [esi+0x34],edx 
       
-         ;建立核心代码段描述符
+         ;建立核心代码段描述符 zhongshu-comment 同98~107行
          mov eax,[edi+0x0c]                 ;核心代码段起始汇编地址
          mov ebx,[edi+0x00]                 ;程序总长度
          sub ebx,eax
@@ -128,12 +128,12 @@
          mov [esi+0x38],eax
          mov [esi+0x3c],edx
 
-         mov word [0x7c00+pgdt],63          ;描述符表的界限
+         mov word [0x7c00+pgdt],63          ;描述符表的界限 zhongshu-comment 在GDT中增加了3个描述符之后，修改GDT的长度为63字节，共8个描述符
                                         
-         lgdt [0x7c00+pgdt]                  
+         lgdt [0x7c00+pgdt]     ;zhongshu-comment 重新加载GDTR，使上面那些对GDT的修改生效。至此，c13_core.asm这个内核程序已经加载完毕。
 
-         jmp far [edi+0x10]  
-       
+         jmp far [edi+0x10]     ;zhongshu-comment 见67行代码可知edi是内核加载的起始物理内存地址，edi+0x10指向了c13_core.asm程序偏移0x10的那个字节，具体在c13_core.asm第28行
+                                ;zhongshu-comment 这是一个间接远转移指令(参考P139 下)，需要读取[edi+0x10]处的6个字节，前4个字节是段内偏移地址，后2个字节是段选择子
 ;-------------------------------------------------------------------------------
 read_hard_disk_0:                        ;从硬盘读取一个逻辑扇区
                                          ;EAX=逻辑扇区号

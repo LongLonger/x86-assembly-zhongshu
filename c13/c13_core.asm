@@ -4,7 +4,7 @@
          ;创建日期：2011-10-26 12:11
     ;zhongshu-comment 7~30行，参考P222~223 13.2.1
          ;以下常量定义部分。内核的大部分内容都应当固定 
-         core_code_seg_sel     equ  0x38    ;内核代码段选择子
+         core_code_seg_sel     equ  0x38    ;内核代码段选择子   ;zhongshu-comment 0011 1000，段描述符索引值是111B，即7(十进制)，GDT的第7个描述符(从0开始数)，具体可见P228 最下面的那幅图：图13-7 内核加载完成后的GDT布局
          core_data_seg_sel     equ  0x30    ;内核数据段选择子 
          sys_routine_seg_sel   equ  0x28    ;系统公共例程代码段的选择子 
          video_ram_seg_sel     equ  0x20    ;视频显示缓冲区的段选择子
@@ -16,15 +16,15 @@
          core_length      dd core_end       ;核心程序总长度#00
 
          sys_routine_seg  dd section.sys_routine.start  ;zhongshu-comment section.sys_routine.start是系统公用例程段的汇编地址，该汇编地址是相对于整个程序开头的偏移量，从0开始。“段的汇编地址”这个概念可参考P114
-                                            ;系统公用例程段位置#04
+                                            ;系统公用例程段位置#04   zhongshu-comment 在c13_mbr.asm的99行直接用到0x04这个偏移量来取“section.sys_routine.start”这个数值
 
          core_data_seg    dd section.core_data.start
-                                            ;核心数据段位置#08
+                                            ;核心数据段位置#08 zhongshu-comment 在c13_mbr.asm的110行直接用到0x08这个偏移量来取“section.core_data.start”这个数值
 
          core_code_seg    dd section.core_code.start
-                                            ;核心代码段位置#0c
+                                            ;核心代码段位置#0c zhongshu-comment 在c13_mbr.asm的121行直接用到0x0c这个偏移量来取“section.core_code.start”这个数值
 
-
+        ;zhongshu-comment 这个核心代码段入口点在c13_mbr.asm的135行被使用
          core_entry       dd start          ;核心代码段入口点#10 zhongshu-comment start这个标号对应531行代码。start是代码段core_code的段内汇编地址，是相对代码段core_code开头的一个偏移量，将会传送到指令指针寄存器EIP
                           dw core_code_seg_sel  ;zhongshu-comment core_code_seg_sel是在第7行声明的一个常数，值是0x38。该常数是代码段core_code段描述符对应的选择子，会被传送到cs段寄存器，然后再到GDT中读出该选择子对应的段描述符到段寄存器的描述符高速缓存器中，core_code代码段的真正的段起始线性地址在描述符高速缓存器中
 
