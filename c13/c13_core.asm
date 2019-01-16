@@ -228,30 +228,30 @@ put_hex_dword:                              ;在当前光标处以十六进制�
          popad
          retf
       
-;-------------------------------------------------------------------------------
+;---zhongshu-comment 232~260行代码 参考 P233 13.4.3 ----------------------------------------------------------------------------
 allocate_memory:                            ;分配内存
                                             ;输入：ECX=希望分配的字节数
                                             ;输出：ECX=起始线性地址 
          push ds
          push eax
          push ebx
-      
-         mov eax,core_data_seg_sel
+    ;zhongshu-comment 239~247行 参考 P234 第2段
+         mov eax,core_data_seg_sel  ;zhongshu-comment 先使段寄存器ds指向内核数据段以访问标号ram_alloc所指向的内存单元，见P242行代码
          mov ds,eax
       
          mov eax,[ram_alloc]
          add eax,ecx                        ;下一次分配时的起始地址
       
-         ;这里应当有检测可用内存数量的指令
+         ;这里应当有检测可用内存数量的指令 zhongshu-comment 但是本过程没有实现这个逻辑
           
-         mov ecx,[ram_alloc]                ;返回分配的起始地址
+         mov ecx,[ram_alloc]                ;返回分配的起始地址  zhongshu-comment 当过程返回时，ECX寄存器包含了所分配内存的起始物理地址
 
          mov ebx,eax
-         and ebx,0xfffffffc
-         add ebx,4                          ;强制对齐 
-         test eax,0x00000003                ;下次分配的起始地址最好是4字节对齐
+         and ebx,0xfffffffc     ;zhongshu-comment c等于1100B，执行and运算后，就将ebx最低两位强制为0，这就导致ebx的值小于等于原来的值了(原来的值的最低两位可能本来就是0)
+         add ebx,4                          ;强制对齐 zhongshu-comment 4等于0100B，在250行可能将最大的11B强制为0，11B等于3，然后251行加上4，所以强制对齐之后的值肯定比原来的大
+         test eax,0x00000003                ;下次分配的起始地址最好是4字节对齐 zhongshu-comment 0x3等于0011，如果eax的最低两位为0，则test指令的结果是0，则zf为1，则不会执行253行代码。意思就是eax自己本来就是4字节对齐的，无需执行253行代码：即无需使用强制对齐之后的ebx的值
          cmovnz eax,ebx                     ;如果没有对齐，则强制对齐 
-         mov [ram_alloc],eax                ;下次从该地址分配内存
+         mov [ram_alloc],eax                ;下次从该地址分配内存 zhongshu-comment 将eax写回标号ram_alloc处，作为下次内存分配的起始地址
                                             ;cmovcc指令可以避免控制转移 
          pop ebx
          pop eax
@@ -273,14 +273,14 @@ set_up_gdt_descriptor:                      ;在GDT内安装一个新的描述�
          mov ebx,core_data_seg_sel          ;切换到核心数据段
          mov ds,ebx
 
-         sgdt [pgdt]                        ;以便开始处理GDT
+         sgdt [pgdt]                        ;以便开始处理GDT zhongshu-comment 参考P235第4段
 
-         mov ebx,mem_0_4_gb_seg_sel
+         mov ebx,mem_0_4_gb_seg_sel     ;zhongshu-comment 将es指向4GB测内存段以操作全局描述符表GDT
          mov es,ebx
 
          movzx ebx,word [pgdt]              ;GDT界限 
          inc bx                             ;GDT总字节数，也是下一个描述符偏移 
-         add ebx,[pgdt+2]                   ;下一个描述符的线性地址 
+         add ebx,[pgdt+2]                   ;下一个描述符的线性地址 zhongshu-comment [pgdt+2]指向的那4个字节的内存单元存储的是GDT的起始线性地址，该加法指令执行后，ebx中得到的就是新描述符的起始线性地址
       
          mov [es:ebx],eax
          mov [es:ebx+4],edx
@@ -288,7 +288,7 @@ set_up_gdt_descriptor:                      ;在GDT内安装一个新的描述�
          add word [pgdt],8                  ;增加一个描述符的大小   
       
          lgdt [pgdt]                        ;对GDT的更改生效 
-       
+    ;zhongshu-comment 292~297行，参考 P237 第2段。作用：给上文刚刚安装的段描述符生成对应的段选择子，保存到cx中
          mov ax,[pgdt]                      ;得到GDT界限值
          xor dx,dx
          mov bx,8
@@ -329,7 +329,7 @@ make_seg_descriptor:                        ;构造存储器和系统的段描�
 ;===============================================================================
 SECTION core_data vstart=0                  ;系统核心的数据段
 ;-------------------------------------------------------------------------------
-         pgdt             dw  0             ;用于设置和修改GDT 
+         pgdt             dw  0             ;用于设置和修改GDT zhongshu-comment 参考P235 6段
                           dd  0
 
          ram_alloc        dd  0x00100000    ;下次分配内存时的起始地址
@@ -410,36 +410,36 @@ load_relocate_program:                      ;加载并重定位用户程序 zhon
          add ebx,512                        ;低9位都为0 
          test eax,0x000001ff                ;程序的大小正好是512的倍数吗?  zhongshu-comment 如果程序的大小不是512字节的倍数，那么eax的低9位不全为0，那么test的执行结果不为0，所以zf为0，就会执行412行的指令
          cmovnz eax,ebx                     ;不是。使用凑整的结果 zhongshu-comment 如果程序的大小刚好是512字节的倍数，那么test执行结果为0，则zf为1，就不会执行412行代码了，那么eax就使用408行的原值了
-      
+    ;zhongshu-comment 从414~474行，参考P234 13.4.4 段的重定位和描述符的创建
          mov ecx,eax                        ;实际需要申请的内存数量 zhongshu-comment question 在程序大小不是512的倍数时，eax会将那些余数凑整，使变为512的倍数，假如程序实际上是513字节，但是凑整后就变为1024字节，后面的那511字节都是多余的
-         call sys_routine_seg_sel:allocate_memory
+         call sys_routine_seg_sel:allocate_memory   ;zhongshu-comment 分配到手的内存块的起始物理地址在ECX中
          mov ebx,ecx                        ;ebx -> 申请到的内存首地址
-         push ebx                           ;保存该首地址 
-         xor edx,edx
+         push ebx                           ;保存该首地址 zhongshu-comment 其目的是用于在后面访问用户程序头部
+         xor edx,edx    ;zhongshu-comment 用户程序的总字节数在eax中，用edx:eax除以512，得到该程序在磁盘占用的扇区数，除法的商在eax中，商就是占用的扇区数
          mov ecx,512
          div ecx
-         mov ecx,eax                        ;总扇区数 
+         mov ecx,eax                        ;总扇区数   zhongshu-comment 除法的商在eax中，商就是占用的扇区数
       
-         mov eax,mem_0_4_gb_seg_sel         ;切换DS到0-4GB的段
+         mov eax,mem_0_4_gb_seg_sel         ;切换DS到0-4GB的段 zhongshu-comment 使使段寄存器DS指向4GB的内存段，这样就可以加载用户程序了
          mov ds,eax
-
+    ;zhongshu-comment 426~430行，循环读取硬盘以加载用户程序，循环次数由ECX控制，ebx中指定了程序要加载到的内存起始物理地址
          mov eax,esi                        ;起始扇区号 
   .b1:
          call sys_routine_seg_sel:read_hard_disk_0
          inc eax
          loop .b1                           ;循环读，直到读完整个用户程序
 
-         ;建立程序头部段描述符
-         pop edi                            ;恢复程序装载的首地址 
+         ;建立程序头部段描述符    zhongshu-comment 上文将程序从硬盘读入内存后，接下来就是根据用户程序的头部信息来创建该程序的段描述符了
+         pop edi                            ;恢复程序装载的首地址  zhongshu-comment 这是在417行压入的
          mov eax,edi                        ;程序头部起始线性地址
          mov ebx,[edi+0x04]                 ;段长度
          dec ebx                            ;段界限 
          mov ecx,0x00409200                 ;字节粒度的数据段描述符
-         call sys_routine_seg_sel:make_seg_descriptor
-         call sys_routine_seg_sel:set_up_gdt_descriptor
-         mov [edi+0x04],cx                   
+         call sys_routine_seg_sel:make_seg_descriptor   ;zhongshu-comment 过程返回后，EDX:EAX中包含了64位的段描述符
+         call sys_routine_seg_sel:set_up_gdt_descriptor ;zhongshu-comment 把438行得到的段描述符安装到GDT中。set_up_gdt_descriptor该过程需要通过EDX:EAX传入段描述符作为唯一的参数，返回时，CX中包含了那个描述符的选择子
+         mov [edi+0x04],cx  ;zhongshu-comment 重要 参考 P237 第5段。将该段的选择子协会到用户程序头部，供用户程序在接管处理器控制权之后使用，实际上，在内核向用户程序转交控制权时也要用到，因为程序的入口地址在用户程序的头部
 
-         ;建立程序代码段描述符
+         ;建立程序代码段描述符    zhongshu-comment 443~460行 和433~440差不多
          mov eax,edi
          add eax,[edi+0x14]                 ;代码起始线性地址
          mov ebx,[edi+0x18]                 ;段长度
@@ -459,7 +459,7 @@ load_relocate_program:                      ;加载并重定位用户程序 zhon
          call sys_routine_seg_sel:set_up_gdt_descriptor
          mov [edi+0x1c],cx
 
-         ;建立程序堆栈段描述符
+         ;建立程序堆栈段描述符 zhongshu-comment 463~474行，参考P237 第7段~P238顶部。这是一个关于“32位保护模式下栈段的初始化”很好的例子
          mov ecx,[edi+0x0c]                 ;4KB的倍率 
          mov ebx,0x000fffff
          sub ebx,ecx                        ;得到段界限
@@ -472,7 +472,7 @@ load_relocate_program:                      ;加载并重定位用户程序 zhon
          call sys_routine_seg_sel:make_seg_descriptor
          call sys_routine_seg_sel:set_up_gdt_descriptor
          mov [edi+0x08],cx
-
+    ;zhongshu-comment 476~ ，参考P238 13.4.5 重定位用户程序内的符号地址
          ;重定位SALT
          mov eax,[edi+0x04]
          mov es,eax                         ;es -> 用户程序头部 
