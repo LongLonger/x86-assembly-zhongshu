@@ -93,14 +93,14 @@
          loop @2                            ;循环读，直到读完整个内核 
     ;zhongshu-comment 95~135行代码，参考P225~228 13.2.3 安装内核的段描述符
  setup:
-         mov esi,[0x7c00+pgdt+0x02]         ;不可以在代码段内寻址pgdt，但可以
-                                            ;通过4GB的段来访问
+         mov esi,[0x7c00+pgdt+0x02]         ;不可以在代码段内寻址pgdt，但可以通过4GB的段来访问 zhongshu-comment 因为该代码段貌似限制了不可读
+
          ;建立公用例程段描述符
-         mov eax,[edi+0x04]                 ;公用例程代码段起始汇编地址
-         mov ebx,[edi+0x08]                 ;核心数据段汇编地址
-         sub ebx,eax
-         dec ebx                            ;公用例程段界限 
-         add eax,edi                        ;公用例程段基地址
+         mov eax,[edi+0x04]                 ;“公用例程代码段”起始汇编地址 zhongshu-comment 内核被加载的起始物理地址是由EDI寄存器指向的。内核程序c13_core.asm偏移0x04处的一个双字，保存了内核程序公共例程段的起始汇编地址，所以edi+0x04就指向保存了“内核程序公共例程段的汇编地址”的内存单元
+         mov ebx,[edi+0x08]                 ;“核心数据段”汇编地址 zhongshu-comment 道理同99行的注释
+         sub ebx,eax    ;zhongshu-comment 见P222 图13-1 可知，“公共例程代码段”后面紧跟着的就是“核心数据段”，所以：公共例程代码段的汇编地址 - 核心数据段的汇编地址 = 公共例程代码段的长度（单位是字节）。
+         dec ebx                            ;公用例程段界限 zhongshu-comment 对于向上扩展的段来说，段界限 = 段长度 - 1
+         add eax,edi                        ;公用例程段基地址 zhongshu-comment 内核被加载的起始物理地址是由EDI寄存器指向的，而eax是公共例程代码段的汇编地址(汇编地址即：相对于程序开头的偏移量)，所以eax + edi就得到了内核程序公共例程代码段的起始物理地址
          mov ecx,0x00409800                 ;字节粒度的代码段描述符
          call make_gdt_descriptor
          mov [esi+0x28],eax
