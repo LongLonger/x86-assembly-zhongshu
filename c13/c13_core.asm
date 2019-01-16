@@ -384,7 +384,7 @@ SECTION core_data vstart=0                  ;系统核心的数据段
 ;===============================================================================
 SECTION core_code vstart=0
 ;-------------------------------------------------------------------------------
-load_relocate_program:                      ;加载并重定位用户程序
+load_relocate_program:                      ;加载并重定位用户程序 zhongshu-comment c13_core.asm这个程序中最重要的就是这部分代码了，也是最长的一部分
                                             ;输入：ESI=起始逻辑扇区号
                                             ;返回：AX=指向用户程序头部的选择子 
          push ebx
@@ -395,23 +395,23 @@ load_relocate_program:                      ;加载并重定位用户程序
       
          push ds
          push es
-      
+    ;zhongshu-comment 399~404行 参考 P232 13.4.2
          mov eax,core_data_seg_sel
          mov ds,eax                         ;切换DS到内核数据段
        
-         mov eax,esi                        ;读取程序头部数据 
-         mov ebx,core_buf                        
+         mov eax,esi                        ;读取程序头部数据 zhongshu-comment eax里的内容是用户程序的起始逻辑扇区号
+         mov ebx,core_buf   ;zhongshu-comment 读出来的数据放到标号core_buff处，一般取名做内核缓冲区(其实就是一段内存区域而已)，该内核缓冲区位于内核数据段中，是在第376行声明和初始化的
          call sys_routine_seg_sel:read_hard_disk_0
 
          ;以下判断整个程序有多大
-         mov eax,[core_buf]                 ;程序尺寸
+         mov eax,[core_buf]                 ;程序尺寸 zhongshu-comment eax里的内容是用户程序的总字节数。用户程序的总字节数就在程序开头偏移为0x00的地方(是一个双字，共4字节)，404行代码读取出来后，保存在core_buff缓冲区的首字节处
          mov ebx,eax
          and ebx,0xfffffe00                 ;使之512字节对齐（能被512整除的数， 
          add ebx,512                        ;低9位都为0 
-         test eax,0x000001ff                ;程序的大小正好是512的倍数吗? 
-         cmovnz eax,ebx                     ;不是。使用凑整的结果 
+         test eax,0x000001ff                ;程序的大小正好是512的倍数吗?  zhongshu-comment 如果程序的大小不是512字节的倍数，那么eax的低9位不全为0，那么test的执行结果不为0，所以zf为0，就会执行412行的指令
+         cmovnz eax,ebx                     ;不是。使用凑整的结果 zhongshu-comment 如果程序的大小刚好是512字节的倍数，那么test执行结果为0，则zf为1，就不会执行412行代码了，那么eax就使用408行的原值了
       
-         mov ecx,eax                        ;实际需要申请的内存数量
+         mov ecx,eax                        ;实际需要申请的内存数量 zhongshu-comment question 在程序大小不是512的倍数时，eax会将那些余数凑整，使变为512的倍数，假如程序实际上是513字节，但是凑整后就变为1024字节，后面的那511字节都是多余的
          call sys_routine_seg_sel:allocate_memory
          mov ebx,ecx                        ;ebx -> 申请到的内存首地址
          push ebx                           ;保存该首地址 
@@ -566,8 +566,8 @@ start:  ;zhongshu-comment 532~565行 参考P229 13.3 在内核中执行
 
          mov ebx,message_5
          call sys_routine_seg_sel:put_string
-         mov esi,50                          ;用户程序位于逻辑50扇区 
-         call load_relocate_program
+         mov esi,50                          ;用户程序位于逻辑50扇区 zhongshu-comment 指定用户程序在磁盘的起始逻辑扇区号
+         call load_relocate_program     ;zhongshu-comment 该过程的作用是：加载和重定位用户程序。该过程在387行，在同一个代码段core_code中。
       
          mov ebx,do_status
          call sys_routine_seg_sel:put_string
