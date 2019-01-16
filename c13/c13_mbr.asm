@@ -101,8 +101,8 @@
          sub ebx,eax    ;zhongshu-comment 见P222 图13-1 可知，“公共例程代码段”后面紧跟着的就是“核心数据段”，所以：公共例程代码段的汇编地址 - 核心数据段的汇编地址 = 公共例程代码段的长度（单位是字节）。
          dec ebx                            ;公用例程段界限 zhongshu-comment 对于向上扩展的段来说，段界限 = 段长度 - 1
          add eax,edi                        ;公用例程段基地址 zhongshu-comment 内核被加载的起始物理地址是由EDI寄存器指向的，而eax是公共例程代码段的汇编地址(汇编地址即：相对于程序开头的偏移量)，所以eax + edi就得到了内核程序公共例程代码段的起始物理地址
-         mov ecx,0x00409800                 ;字节粒度的代码段描述符
-         call make_gdt_descriptor
+         mov ecx,0x00409800                 ;字节粒度的代码段描述符 zhongshu-comment ---- ---- 0100 ---- 1001 1000 ---- ----  位24~31、位0~7都是段起始地址的一部分，位16~19是段界限的一部分，这些位都不需要理会，因为段起始地址由EAX负责，段界限由EBX负责。ECX负责段的各种属性，这里只需要关注非“-”部分即可，不需要关注的那些位我用“-”表示了
+         call make_gdt_descriptor       ;zhongshu-comment 这是104行的注释，解释那3段数字都是什么位：①G、D/B、L、AVL。 ②P、DPL(占2位)、S。 ③TYPE(占4位)
          mov [esi+0x28],eax
          mov [esi+0x2c],edx
        
@@ -191,21 +191,21 @@ read_hard_disk_0:                        ;从硬盘读取一个逻辑扇区
       
          ret
 
-;-------------------------------------------------------------------------------
+;----zhongshu-comment 195~217行 参考P227~228   ---------------------------------------------------------------------------
 make_gdt_descriptor:                     ;构造描述符
                                          ;输入：EAX=线性基地址
                                          ;      EBX=段界限
                                          ;      ECX=属性（各属性位都在原始
                                          ;      位置，其它没用到的位置0） 
                                          ;返回：EDX:EAX=完整的描述符
-         mov edx,eax
+         mov edx,eax    ;zhongshu-comment 201~203行 参考 P227 第4~5段
          shl eax,16                     
-         or ax,bx                        ;描述符前32位(EAX)构造完毕
-      
+         or ax,bx                        ;描述符前32位(EAX)构造完毕 zhongshu-comment ebx寄存器存储了段界限的20位，bx寄存器存储了段界限的低16位，bx是ebx的低16位，剩下的4位在209~210行代码中解决
+    ;zhongshu-comment 205~207行 参考 P227 第6段以及下面的配图，看配图大概就能看懂了
          and edx,0xffff0000              ;清除基地址中无关的位
          rol edx,8
          bswap edx                       ;装配基址的31~24和23~16  (80486+)
-      
+   ;zhongshu-comment 209~214行 参考 P228 3、4段
          xor bx,bx
          or edx,ebx                      ;装配段界限的高4位
       
