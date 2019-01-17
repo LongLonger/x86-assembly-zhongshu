@@ -14,7 +14,7 @@ SECTION header vstart=0
          stack_len        dd 1                    ;程序建议的堆栈大小#0x0c
                                                   ;以4KB为单位
                                                   
-         prgentry         dd start                ;程序入口#0x10 zhongshu-comment
+         prgentry         dd start                ;程序入口#0x10
          code_seg         dd section.code.start   ;代码段位置#0x14   ;zhongshu-comment 参考 P231 第7段；（类比：第8章加载完用户程序后也会将段地址回填到用户程序中，具体见c08_mbr.asm 59~61行代码）  该双字是用户程序代码段的起始汇编地址，当内核完成对用户程序的加载和重定位之后，将把该段的选择子回填到这里（仅占用低16位，因为选择子只占用16位）
          code_len         dd code_end             ;代码段长度#0x18
 
@@ -26,7 +26,7 @@ SECTION header vstart=0
          salt_items       dd (header_end-salt)/256 ;#0x24
          
          salt:                                     ;#0x28
-         PrintString      db  '@PrintString'
+         PrintString      db  '@PrintString'    ;zhongshu-comment 在本程序使用例程时，不会是使用标号PrintString，而不是@PrintString，@PrintString是给c13_core.asm内核程序用的
                      times 256-($-PrintString) db 0
                      
          TerminateProgram db  '@TerminateProgram'
@@ -65,7 +65,7 @@ start:
          mov ds,eax
      
          mov ebx,message_1
-         call far [fs:PrintString]
+         call far [fs:PrintString]  ;zhongshu-comment 调用内核提供的过程
      
          mov eax,100                         ;逻辑扇区号100
          mov ebx,buffer                      ;缓冲区偏移地址

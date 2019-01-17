@@ -198,7 +198,7 @@ read_hard_disk_0:                           ;从硬盘读取一个逻辑扇区
          retf                               ;段间返回 
 
 ;-------------------------------------------------------------------------------
-;汇编语言程序是极难一次成功，而且调试非常困难。这个例程可以提供帮助 
+;汇编语言程序是极难一次成功，而且调试非常困难。这个例程可以提供帮助 zhongshu-comment 202~229 参考P244
 put_hex_dword:                              ;在当前光标处以十六进制形式显示
                                             ;一个双字并推进光标 
                                             ;输入：EDX=要转换并显示的数字
@@ -472,32 +472,32 @@ load_relocate_program:                      ;加载并重定位用户程序 zhon
          call sys_routine_seg_sel:make_seg_descriptor
          call sys_routine_seg_sel:set_up_gdt_descriptor
          mov [edi+0x08],cx
-    ;zhongshu-comment 476~ ，参考P238 13.4.5 重定位用户程序内的符号地址
+    ;zhongshu-comment 476~515 ，参考P238 13.4.5 重定位用户程序内的符号地址
          ;重定位SALT
          mov eax,[edi+0x04]
          mov es,eax                         ;es -> 用户程序头部 
          mov eax,core_data_seg_sel
-         mov ds,eax
+         mov ds,eax     ;zhongshu-comment 使ds的内容为内核数据段的选择子
       
-         cld
+         cld    ;zhongshu-comment 使标志位DF为0，cmps指令就会按正向进行比较
 
          mov ecx,[es:0x24]                  ;用户程序的SALT条目数
-         mov edi,0x28                       ;用户程序内的SALT位于头部内0x2c处
-  .b2: 
+         mov edi,0x28                       ;用户程序内的SALT位于头部内0x2c处 ;zhongshu-comment 作者写错了吧，应该是0x28处吧，见c13.asm的28行
+  .b2:  ;zhongshu-comment 486~515行是外循环，里面夹杂了个内循环，参考P240中下
          push ecx
          push edi
-      
+        ;zhongshu-comment 490~510行是内循环，参考P241~242
          mov ecx,salt_items
          mov esi,salt
   .b3:
          push edi
          push esi
          push ecx
-
+    ;zhongshu-comment 497~503行，是整个对比过程的核心部分。参考P241 倒数第2段以下
          mov ecx,64                         ;检索表中，每条目的比较次数 
          repe cmpsd                         ;每次比较4字节 
-         jnz .b4
-         mov eax,[esi]                      ;若匹配，esi恰好指向其后的地址数据
+         jnz .b4    ;zhongshu-comment 如果两个字符串不相同，那么比较结果不为0，则zf位为0，则jnz条件成立，就会跳转到.b4
+         mov eax,[esi]                      ;若匹配，esi恰好指向其后的地址数据 zhongshu-comment 该地址数据就是例程的所在地址，6字节，前面4字节是段内偏移地址(由500~501行代码负责写回到用户程序中)，后2个字节是段选择子(由502~503行代码负责写回到用户程序中)
          mov [es:edi-256],eax               ;将字符串改写成偏移地址 
          mov ax,[esi+4]
          mov [es:edi-252],ax                ;以及段选择子 
@@ -507,13 +507,13 @@ load_relocate_program:                      ;加载并重定位用户程序 zhon
          pop esi
          add esi,salt_item_len
          pop edi                            ;从头比较 
-         loop .b3
+         loop .b3   ;zhongshu-comment 内循环结束
       
          pop edi
          add edi,256
          pop ecx
-         loop .b2
-
+         loop .b2   ;zhongshu-comment 外循环结束 -----------------------------------------
+    ;zhongshu-comment 517~528 参考242 13.5 第1段
          mov ax,[es:0x04]
 
          pop es                             ;恢复到调用此过程前的es段 
@@ -567,7 +567,7 @@ start:  ;zhongshu-comment 532~565行 参考P229 13.3 在内核中执行
          mov ebx,message_5
          call sys_routine_seg_sel:put_string
          mov esi,50                          ;用户程序位于逻辑50扇区 zhongshu-comment 指定用户程序在磁盘的起始逻辑扇区号
-         call load_relocate_program     ;zhongshu-comment 该过程的作用是：加载和重定位用户程序。该过程在387行，在同一个代码段core_code中。
+         call load_relocate_program     ;zhongshu-comment 该过程的作用是：加载和重定位用户程序。该过程在387行，在同一个代码段core_code中。该过程是c13_core.asm程序的重点部分
       
          mov ebx,do_status
          call sys_routine_seg_sel:put_string
@@ -578,7 +578,7 @@ start:  ;zhongshu-comment 532~565行 参考P229 13.3 在内核中执行
       
          jmp far [0x10]                      ;控制权交给用户程序（入口点）
                                              ;堆栈可能切换 
-
+    ;zhongshu-comment 582~596 参考 P239 1~3段；P243 第3段~13.6以上
 return_point:                                ;用户程序返回点
          mov eax,core_data_seg_sel           ;使ds指向核心数据段
          mov ds,eax
