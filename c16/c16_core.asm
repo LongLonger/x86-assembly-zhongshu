@@ -933,34 +933,34 @@ start:
          loop .b1
          
          ;在页目录内创建指向页目录自己的目录项
-         mov dword [es:ebx+4092],0x00020003 
+         mov dword [es:ebx+4092],0x00020003 ;zhongshu-comment 参考 P312 第3段。页目录项的格式见P311图16-11(a)，高20位是0002 0，补上低12位的0，就是0x0002 0000，页目录表的起始物理地址就是这个。解释：因为页表(注：一个页目录项指向的就是一个页表)的物理地址要求必须是4KB对齐以便一个页表能放在一个4KB的页内，所以页表物理地址的低12位全是0，所以在目录项内只存储了高20位
 
          ;在页目录内创建与线性地址0x00000000对应的目录项
          mov dword [es:ebx+0],0x00021003    ;写入目录项（页表的物理地址和属性）      
 
          ;创建与上面那个目录项相对应的页表，初始化页表项 
-         mov ebx,0x00021000                 ;页表的物理地址
-         xor eax,eax                        ;起始页的物理地址 
-         xor esi,esi
+         mov ebx,0x00021000                 ;页表的物理地址 zhongshu-comment 参考 P310 图16-10
+         xor eax,eax                        ;起始页的物理地址 zhongshu-comment 页表的每一个表项存储了一个内存页的物理地址，在本程序中令第一个表项指向的那个内存页的物理地址是eax，即0，即物理内存的第一字节处
+         xor esi,esi    ;zhongshu-comment 用于定位每一个表项，相当于表项的索引值，即页表的第n个表项
   .b2:       
          mov edx,eax
-         or edx,0x00000003                                                      
-         mov [es:ebx+esi*4],edx             ;登记页的物理地址
-         add eax,0x1000                     ;下一个相邻页的物理地址 
+         or edx,0x00000003  ;zhongshu-comment 参考 P312 最后一段
+         mov [es:ebx+esi*4],edx             ;登记页的物理地址 zhongshu-comment 将内存页的物理地址传送到页表的表项中
+         add eax,0x1000                     ;下一个相邻页的物理地址 zhongshu-comment 0x1000等于4096(十进制)，即4KB，每个内存页的大小是4KB，所以加上0x1000就是下一个相邻内存页的物理地址了
          inc esi
-         cmp esi,256                        ;仅低端1MB内存对应的页才是有效的 
+         cmp esi,256                        ;仅低端1MB内存对应的页才是有效的 zhongshu-comment 只循环0~255，共256次。当esi等于256时，952行代码就不跳转
          jl .b2
-         
-  .b3:                                      ;其余的页表项置为无效
+    ;zhongshu-comment 954~958行 参考P313 第三段。
+  .b3:                                      ;其余的页表项置为无效 zhongshu-comment 即将表项内容全置为0，见955行。
          mov dword [es:ebx+esi*4],0x00000000  
          inc esi
-         cmp esi,1024
+         cmp esi,1024   ;zhongshu-comment 类似951行
          jl .b3 
 
-         ;令CR3寄存器指向页目录，并正式开启页功能 
+         ;令CR3寄存器指向页目录，并正式开启页功能 zhongshu-comment 961~962 参考 P313 第4段
          mov eax,0x00020000                 ;PCD=PWT=0
          mov cr3,eax
-
+    ;zhongshu-comment 964~966行 参考 倒数第1段
          mov eax,cr0
          or eax,0x80000000
          mov cr0,eax                        ;开启分页机制
