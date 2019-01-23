@@ -330,14 +330,14 @@ allocate_a_4k_page:                         ;分配一个4KB的页
          push ds
          
          mov eax,core_data_seg_sel
-         mov ds,eax
-         
-         xor eax,eax
+         mov ds,eax     ;zhongshu-comment 令ds指向内核数据段
+    ;zhongshu-comment 335~341行 参考 P323 上半段
+         xor eax,eax    ;zhongshu-comment 参考 P323 第2段 先将EAX清零，表明我们要从位串的第1个比特开始搜索
   .b1:
          bts [page_bit_map],eax
-         jnc .b2
-         inc eax
-         cmp eax,page_map_len*8
+         jnc .b2    ;zhongshu-comment 如果cf位为0，就跳转到347的b2处
+         inc eax    ;zhongshu-comment 将EAX的内容加1，准备测试中的下一比特
+         cmp eax,page_map_len*8 ;zhongshu-comment 判断是否已经遍历完了位串中的所有比特，当eax=page_map_len*8时，就代表已经遍历完了，就不跳转到336行的bl而是去执行343行
          jl .b1
          
          mov ebx,message_3
@@ -345,7 +345,7 @@ allocate_a_4k_page:                         ;分配一个4KB的页
          hlt                                ;没有可以分配的页，停机 
          
   .b2:
-         shl eax,12                         ;乘以4096（0x1000） 
+         shl eax,12                         ;乘以4096（0x1000） zhongshu-comment 参考 P232 第5段
          
          pop ds
          pop edx
@@ -366,19 +366,19 @@ alloc_inst_a_page:                          ;分配一个页，并安装在当�
          mov eax,mem_0_4_gb_seg_sel
          mov ds,eax
          
-         ;检查该线性地址所对应的页表是否存在
+         ;检查该线性地址所对应的页表是否存在 zhongshu-comment 370~373 参考 P320 第1~3段
          mov esi,ebx
          and esi,0xffc00000
          shr esi,20                         ;得到页目录索引，并乘以4 
          or esi,0xfffff000                  ;页目录自身的线性地址+表内偏移 
 
          test dword [esi],0x00000001        ;P位是否为“1”。检查该线性地址是 
-         jnz .b1                            ;否已经有对应的页表
-          
-         ;创建该线性地址所对应的页表 
-         call allocate_a_4k_page            ;分配一个页做为页表 
-         or eax,0x00000007
-         mov [esi],eax                      ;在页目录中登记该页表
+         jnz .b1                            ;否已经有对应的页表 zhongshu-comment 如果对应的页目录项不存在，就不跳转，顺着执行379~381
+    ;zhongshu-comment 380~403行 参考 P323 16.4.3 创建页表并登记分配的页
+         ;创建该线性地址所对应的页表 zhongshu-comment 379~381 参考 P320 第6段
+         call allocate_a_4k_page            ;分配一个页做为页表 zhongshu-comment 该过程在324行，过程的输出：EAX=页的物理地址
+         or eax,0x00000007  ;zhongshu-comment 将eax中的物理地址和0x00000007拼接起来，物理地址只需要高20位即可，低12位是一些属性位，所以这里的0x00000007就是一些属性值，具体见P311 图16-11
+         mov [esi],eax                      ;在页目录中登记该页表 zhongshu-comment 即在esi指向的那个目录项中填写页表的物理地址
           
   .b1:
          ;开始访问该线性地址所对应的页表 
@@ -526,7 +526,7 @@ SECTION core_data vstart=0                  ;系统核心的数据段
          tcb_chain        dd  0
 
          ;内核信息
-         core_next_laddr  dd  0x80100000    ;内核空间中下一个可分配的线性地址        
+         core_next_laddr  dd  0x80100000    ;内核空间中下一个可分配的线性地址 zhongshu-comment 参考 P319 16.4.1 第3段
          program_man_tss  dd  0             ;程序管理器的TSS描述符选择子 
                           dw  0
 
@@ -1023,8 +1023,8 @@ start:
          call far [salt_1+256]              ;通过门显示信息(偏移量将被忽略) 
       
          ;为程序管理器的TSS分配内存空间
-         mov ebx,[core_next_laddr]
-         call sys_routine_seg_sel:alloc_inst_a_page
+         mov ebx,[core_next_laddr]  ;zhongshu-comment 参考 P319 16.4.1 第3段
+         call sys_routine_seg_sel:alloc_inst_a_page ;zhongshu-comment 参考 P319 16.4.1 第5段。 alloc_inst_a_page该例程在358行
          add dword [core_next_laddr],4096
 
          ;在程序管理器的TSS中设置必要的项目 
