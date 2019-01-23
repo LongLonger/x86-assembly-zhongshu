@@ -973,24 +973,24 @@ start:
          mov dword [es:ebx+esi],0x00021003  ;写入目录项（页表的物理地址和属性）zhongshu-comment 写入的值和939行的一样 0x00021003
                                             ;目标单元的线性地址为0xFFFFF200
                                              
-         ;将GDT中的段描述符映射到线性地址0x80000000
-         sgdt [pgdt]
+         ;将GDT中的段描述符映射到线性地址0x80000000 zhongshu-comment 977~979行 参考 P318 第2段
+         sgdt [pgdt]    ;zhongshu-comment pgdt标号在462行。将GDTR寄存器里的6字节保存到标号pgdt指向的6个内存单元中。16章仍然使用13章的内核加载程序c13_mbr.asm，GDT在内核加载程序里已经创建了，所以GDTR里会有值的
          
-         mov ebx,[pgdt+2]
-         
+         mov ebx,[pgdt+2]   ;zhongshu-comment 标号pgdt+2处是GDT的线性基地址；将GDT的线性基地址传送到EBX寄存器中
+    ;zhongshu-comment 981~986行 参考 P318 第3段
          or dword [es:ebx+0x10+4],0x80000000
          or dword [es:ebx+0x18+4],0x80000000
          or dword [es:ebx+0x20+4],0x80000000
          or dword [es:ebx+0x28+4],0x80000000
          or dword [es:ebx+0x30+4],0x80000000
          or dword [es:ebx+0x38+4],0x80000000
-         
+    ;zhongshu-comment 988~990行 参考 P318 第4段
          add dword [pgdt+2],0x80000000      ;GDTR也用的是线性地址 
          
          lgdt [pgdt]
         
          jmp core_code_seg_sel:flush        ;刷新段寄存器CS，启用高端线性地址 
-                                             
+    ;zhongshu-comment 995~999 参考 P319 第2段
    flush:
          mov eax,core_stack_seg_sel
          mov ss,eax
@@ -1000,7 +1000,7 @@ start:
           
          mov ebx,message_1
          call sys_routine_seg_sel:put_string
-
+    ;zhongshu-comment 1005~1023 参考P319 第4段
          ;以下开始安装为整个系统服务的调用门。特权级之间的控制转移必须使用门
          mov edi,salt                       ;C-SALT表的起始位置 
          mov ecx,salt_items                 ;C-SALT表的条目数量 
