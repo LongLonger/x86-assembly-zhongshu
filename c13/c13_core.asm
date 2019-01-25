@@ -403,7 +403,7 @@ load_relocate_program:                      ;加载并重定位用户程序 zhon
          mov ebx,core_buf   ;zhongshu-comment 读出来的数据放到标号core_buff处，一般取名做内核缓冲区(其实就是一段内存区域而已)，该内核缓冲区位于内核数据段中，是在第376行声明和初始化的
          call sys_routine_seg_sel:read_hard_disk_0
 
-         ;以下判断整个程序有多大
+         ;以下判断整个程序有多大   zhongshu-comment 407~412和c16_core.asm 613~618行的逻辑是一毛一样，只不过c16_core.asm的是4096字节对齐，这里是512字节对齐
          mov eax,[core_buf]                 ;程序尺寸 zhongshu-comment eax里的内容是用户程序的总字节数。用户程序的总字节数就在程序开头偏移为0x00的地方(是一个双字，共4字节)，404行代码读取出来后，保存在core_buff缓冲区的首字节处
          mov ebx,eax
          and ebx,0xfffffe00                 ;使之512字节对齐（能被512整除的数， 

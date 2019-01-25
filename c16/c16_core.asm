@@ -527,7 +527,7 @@ SECTION core_data vstart=0                  ;系统核心的数据段
 
          ;内核信息
          core_next_laddr  dd  0x80100000    ;内核空间中下一个可分配的线性地址 zhongshu-comment 参考 P319 16.4.1 第3段
-         program_man_tss  dd  0             ;程序管理器的TSS描述符选择子 
+         program_man_tss  dd  0             ;程序管理器的TSS描述符选择子 zhongshu-comment 参考 P325 第2段
                           dw  0
 
 core_data_end:
@@ -577,7 +577,7 @@ fill_descriptor_in_ldt:                     ;在LDT内安装一个新的描述�
      
          ret
       
-;-------------------------------------------------------------------------------
+;---zhongshu-comment load_relocate_program该例程 参考P329 从倒数第4段开始----------------------------------------------------------------------------
 load_relocate_program:                      ;加载并重定位用户程序
                                             ;输入: PUSH 逻辑扇区号
                                             ;      PUSH 任务控制块基地址
@@ -588,7 +588,7 @@ load_relocate_program:                      ;加载并重定位用户程序
          push es
       
          mov ebp,esp                        ;为访问通过堆栈传递的参数做准备
-      
+    ;zhongshu-comment 592~602行 参考 P329 倒数第2段。用于将当前目录表的前半部分清空
          mov ecx,mem_0_4_gb_seg_sel
          mov es,ecx
       
@@ -600,7 +600,7 @@ load_relocate_program:                      ;加载并重定位用户程序
          inc esi
          cmp esi,512
          jl .b1
-         
+  ;zhongshu-comment 604~
          ;以下开始分配内存并加载用户程序
          mov eax,core_data_seg_sel
          mov ds,eax                         ;切换DS到内核数据段
@@ -609,31 +609,31 @@ load_relocate_program:                      ;加载并重定位用户程序
          mov ebx,core_buf                   ;读取程序头部数据
          call sys_routine_seg_sel:read_hard_disk_0
 
-         ;以下判断整个程序有多大
+         ;以下判断整个程序有多大   zhongshu-comment 613~618行 参考P330 2~4段。这几行代码和c13_core.asm 407~412行的逻辑是一毛一样，只不过c13_core.asm的是512字节对其，这里是4096字节对齐
          mov eax,[core_buf]                 ;程序尺寸
          mov ebx,eax
          and ebx,0xfffff000                 ;使之4KB对齐 
          add ebx,0x1000                        
          test eax,0x00000fff                ;程序的大小正好是4KB的倍数吗? 
          cmovnz eax,ebx                     ;不是。使用凑整的结果
-
+    ;zhongshu-comment 620~642 参考 P330 第6段~P331 第1段
          mov ecx,eax
          shr ecx,12                         ;程序占用的总4KB页数 
          
          mov eax,mem_0_4_gb_seg_sel         ;切换DS到0-4GB的段
          mov ds,eax
 
-         mov eax,[ebp+12*4]                 ;起始扇区号
+         mov eax,[ebp+12*4]                 ;起始扇区号 zhongshu-comment 从栈中取得外面传进来的参数：程序在硬盘的起始扇区号。假如用ebp寄存器的时，就会默认使用SS栈段寄存器而不是DS
          mov esi,[ebp+11*4]                 ;从堆栈中取得TCB的基地址
   .b2:
-         mov ebx,[es:esi+0x06]              ;取得可用的线性地址
-         add dword [es:esi+0x06],0x1000
-         call sys_routine_seg_sel:alloc_inst_a_page
-
+         mov ebx,[es:esi+0x06]              ;取得可用的线性地址 zhongshu-comment 0x06是一个偏移量，见P328 图16-25可知，0x06“下一个可用的线性地址”在TCB内的偏移量
+         add dword [es:esi+0x06],0x1000     ;zhongshu-comment 因为每次只会用0x100字节的虚拟内存(0x100就是十进制的4096，就是一个内存页的大小)，所以令TCB的“下一个可用的线性地址”字段值加上0x100，那是下一个可用的线性地址
+         call sys_routine_seg_sel:alloc_inst_a_page     ;zhongshu-comment 该例程在358行；输入参数：EBX=页的线性地址；输出：没有输出；该例程的作用：根据给定的线性地址，设置页目录表和页表的内容、分配一个物理内存页，当分配完毕后，下文就可以使用线性地址去访问内存了、就不会抛缺页异常了。
+    ;zhongshu-comment 633~638 参考 P330 倒数第3段~P331 第1段
          push ecx
          mov ecx,8
   .b3:
-         call sys_routine_seg_sel:read_hard_disk_0
+         call sys_routine_seg_sel:read_hard_disk_0  ;zhongshu-comment 该例程在145行
          inc eax
          loop .b3
 
@@ -1025,7 +1025,7 @@ start:
          ;为程序管理器的TSS分配内存空间
          mov ebx,[core_next_laddr]  ;zhongshu-comment 参考 P319 16.4.1 第3段
          call sys_routine_seg_sel:alloc_inst_a_page ;zhongshu-comment 参考 P319 16.4.1 第5段。 alloc_inst_a_page该例程在358行
-         add dword [core_next_laddr],4096
+         add dword [core_next_laddr],4096   ;zhongshu-comment 1028~1050 参考P324 16.4.4 创建内核任务的TSS 整个小节
 
          ;在程序管理器的TSS中设置必要的项目 
          mov word [es:ebx+0],0              ;反向链=0
@@ -1051,20 +1051,20 @@ start:
 
          ;现在可认为“程序管理器”任务正执行中
 
-         ;创建用户任务的任务控制块 
-         mov ebx,[core_next_laddr]
+         ;创建用户任务的任务控制块 zhongshu-comment 即Task Control Block，TCB，TCB的内容复习P264
+         mov ebx,[core_next_laddr]  ;zhongshu-comment 1055~1057，参考P328 16.5.3 第4段。用于在内核的虚拟地址空间里分配4KB的内存页，代码的逻辑和1026~1028为TSS申请内存页是一样的，这几行代码都是一毛一样
          call sys_routine_seg_sel:alloc_inst_a_page
          add dword [core_next_laddr],4096
-         
+    ;zhongshu-comment 1059~1062行，参考P328 16.5.3 第5段。用于初始化TCB，并为TCB里的某些域赋值
          mov dword [es:ebx+0x06],0          ;用户任务局部空间的分配从0开始。
          mov word [es:ebx+0x0a],0xffff      ;登记LDT初始的界限到TCB中
          mov ecx,ebx
          call append_to_tcb_link            ;将此TCB添加到TCB链中 
-      
+    ;zhongshu-comment 1064~1067行，参考P329 第2段。压入的这两个参数是要传给load_relocate_program这个例程的
          push dword 50                      ;用户程序位于逻辑50扇区
          push ecx                           ;压入任务控制块起始线性地址 
        
-         call load_relocate_program         
+         call load_relocate_program     ;zhongshu-comment 该例程在581行。参考P329 从倒数第4段开始
       
          mov ebx,message_4
          call sys_routine_seg_sel:put_string
