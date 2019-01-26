@@ -416,12 +416,12 @@ create_copy_cur_pdir:                       ;创建新页目录，并复制当�
          mov ebx,mem_0_4_gb_seg_sel
          mov ds,ebx
          mov es,ebx
-         
-         call allocate_a_4k_page            
+    ;zhongshu-comment 420~423 参考 P334 4~5段
+         call allocate_a_4k_page    ;zhongshu-comment 该过程在324，返回值在EAX中，是一个页的物理地址
          mov ebx,eax
          or ebx,0x00000007
          mov [0xfffffff8],ebx
-         
+    ;zhongshu-comment 425~429 参考 P334 6、7段
          mov esi,0xfffff000                 ;ESI->当前页目录的线性地址
          mov edi,0xffffe000                 ;EDI->新页目录的线性地址
          mov ecx,1024                       ;ECX=要复制的目录项数
@@ -639,7 +639,7 @@ load_relocate_program:                      ;加载并重定位用户程序
 
          pop ecx
          loop .b2
-
+    ;zhongshu-comment 643~749行 参考 P332 16.5.5 段描述符的创建(平坦模型)
          ;在内核地址空间内创建用户任务的TSS
          mov eax,core_data_seg_sel          ;切换DS到内核数据段
          mov ds,eax
@@ -748,7 +748,7 @@ load_relocate_program:                      ;加载并重定位用户程序
          mov edx,[es:esi+0x06]              ;堆栈的高端线性地址
          mov [es:ebx+20],edx                ;填写TSS的ESP2域 
 
-
+    ;zhongshu-comment 753~794行是重定位的代码，这段程序不管是在哪一章，都只有两行不一样，其余都一模一样；这两行就是761、762。参考 P333 16.5.6 第1、2段
          ;重定位SALT 
          mov eax,mem_0_4_gb_seg_sel         ;访问任务的4GB虚拟地址空间时用 
          mov es,eax                         
@@ -757,9 +757,9 @@ load_relocate_program:                      ;加载并重定位用户程序
          mov ds,eax
       
          cld
-
-         mov ecx,[es:0x0c]                  ;U-SALT条目数 
-         mov edi,[es:0x08]                  ;U-SALT在4GB空间内的偏移 
+    ;zhongshu-comment 761~762行，很重要的两行，参考 P333 16.5.6 第1、2段
+         mov ecx,[es:0x0c]                  ;U-SALT条目数 zhongshu-comment 0x0c这个是用户程序内的偏移量，具体见c16.asm的第9行
+         mov edi,[es:0x08]                  ;U-SALT在4GB空间内的偏移 zhongshu-comment 0x08这个是用户程序内的偏移量，具体见c16.asm的第8行
   .b4:
          push ecx
          push edi
@@ -793,15 +793,15 @@ load_relocate_program:                      ;加载并重定位用户程序
          pop ecx
          loop .b4
 
-         ;在GDT中登记LDT描述符
+         ;在GDT中登记LDT描述符 zhongshu-comment LDT表视为一个段，将该段的段描述符登记到GDT中
          mov esi,[ebp+11*4]                 ;从堆栈中取得TCB的基地址
-         mov eax,[es:esi+0x0c]              ;LDT的起始线性地址
+         mov eax,[es:esi+0x0c]              ;LDT的起始线性地址 zhongshu-comment 0x0c是TCB内的偏移量，具体见P328 图16-25
          movzx ebx,word [es:esi+0x0a]       ;LDT段界限
          mov ecx,0x00408200                 ;LDT描述符，特权级0
          call sys_routine_seg_sel:make_seg_descriptor
          call sys_routine_seg_sel:set_up_gdt_descriptor
          mov [es:esi+0x10],cx               ;登记LDT选择子到TCB中
-
+    ;zhongshu-comment 805~820 参考 P333 16.5.6 第4段
          mov ebx,[es:esi+0x14]              ;从TCB中获取TSS的线性地址
          mov [es:ebx+96],cx                 ;填写TSS的LDT域 
 
@@ -818,7 +818,7 @@ load_relocate_program:                      ;加载并重定位用户程序
          pushfd
          pop edx
          mov [es:ebx+36],edx                ;填写TSS的EFLAGS域 
-
+    ;zhongshu-comment 823~828行 参考 P333 最底下那段
          ;在GDT中登记TSS描述符
          mov eax,[es:esi+0x14]              ;从TCB中获取TSS的起始线性地址
          movzx ebx,word [es:esi+0x12]       ;段长度（界限）
@@ -829,9 +829,9 @@ load_relocate_program:                      ;加载并重定位用户程序
 
          ;创建用户任务的页目录
          ;注意！页的分配和使用是由页位图决定的，可以不占用线性地址空间 
-         call sys_routine_seg_sel:create_copy_cur_pdir
+         call sys_routine_seg_sel:create_copy_cur_pdir  ;zhongshu-comment 参考P334 从第2段开始。该过程在406行，返回值在eax寄存器内，是新页目录的物理地址。
          mov ebx,[es:esi+0x14]              ;从TCB中获取TSS的线性地址
-         mov dword [es:ebx+28],eax          ;填写TSS的CR3(PDBR)域
+         mov dword [es:ebx+28],eax          ;填写TSS的CR3(PDBR)域   zhongshu-comment create_copy_cur_pdir该过程的返回值在eax寄存器内，是新页目录的物理地址；834行将新页目录表的物理地址填写到用户任务TSS的CR3寄存器域中
                    
          pop es                             ;恢复到调用此过程前的es段 
          pop ds                             ;恢复到调用此过程前的ds段
@@ -1064,7 +1064,7 @@ start:
          push dword 50                      ;用户程序位于逻辑50扇区
          push ecx                           ;压入任务控制块起始线性地址 
        
-         call load_relocate_program     ;zhongshu-comment 该例程在581行。参考P329 从倒数第4段开始
+         call load_relocate_program     ;zhongshu-comment 该例程在581行，没返回值。参考P329 从倒数第4段开始
       
          mov ebx,message_4
          call sys_routine_seg_sel:put_string
