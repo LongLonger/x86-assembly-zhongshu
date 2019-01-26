@@ -1065,7 +1065,7 @@ start:
          push ecx                           ;压入任务控制块起始线性地址 
        
          call load_relocate_program     ;zhongshu-comment 该例程在581行，没返回值。参考P329 从倒数第4段开始
-      
+    ;zhongshu-comment 1069~1072行 参考 P334 最底下
          mov ebx,message_4
          call sys_routine_seg_sel:put_string
          
